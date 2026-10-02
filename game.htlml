@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Игровой Хаб — Оффлайн Игры</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #141414;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .hub-container {
+            width: 100%;
+            max-width: 500px;
+            background: #1f1f1f;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            text-align: center;
+            box-sizing: border-box;
+        }
+        /* Профиль игрока сверху */
+        .profile-bar {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #2a2a2a;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .profile-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #00ff88;
+        }
+        .profile-name { font-weight: bold; font-size: 18px; color: #00ff88; }
+        
+        h2 { margin-top: 0; color: #fff; }
+        
+        /* Кнопки меню выбора игр */
+        .menu-buttons { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .game-btn {
+            background: #333;
+            color: #fff;
+            border: 2px solid #444;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .game-btn.active { background: #00ff88; color: #141414; border-color: #00ff88; }
+        .game-btn:hover { border-color: #00ff88; }
+
+        /* Игровая зона */
+        .game-zone {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            display: none; /* Показывается при выборе игры */
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 80px);
+            grid-gap: 8px;
+            justify-content: center;
+            margin: 15px auto;
+        }
+        .cell {
+            width: 80px;
+            height: 80px;
+            background: #1f1f1f;
+            border: 2px solid #444;
+            border-radius: 8px;
+            font-size: 32px;
+            font-weight: bold;
+            line-height: 80px;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+        .cell:hover { background: #333; }
+        #status { font-size: 18px; margin-bottom: 10px; color: #00ff88; font-weight: bold; }
+        
+        .action-btn {
+            background: #00ff88;
+            color: #141414;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .action-btn:hover { background: #00dd77; }
+    </style>
+</head>
+<body>
+
+<div class="hub-container">
+    <!-- Шапка профиля -->
+    <div class="profile-bar">
+        <img id="userAvatar" class="profile-avatar" src="https://placeholder.com" alt="Аватар">
+        <div>
+            <div style="font-size: 12px; color: #aaa;">Игрок:</div>
+            <div id="userName" class="profile-name">Гость</div>
+        </div>
+    </div>
+
+    <h2>Список оффлайн игр</h2>
+    
+    <!-- Выбор игр -->
+    <div class="menu-buttons">
+        <button class="game-btn active" onclick="switchGame('tic-tac-toe')">❌⭕ Крестики-Нолики (с Ботом)</button>
+        <button class="game-btn" style="opacity: 0.5; cursor: not-allowed;">🔒 Следующая игра (В разработке)</button>
+    </div>
+
+    <!-- ОКНО ИГРЫ: КРЕСТИКИ-НОЛИКИ -->
+    <div id="tic-tac-toe-zone" class="game-zone" style="display: block;">
+        <div id="status">Ваш ход (X)</div>
+        <div class="board">
+            <div class="cell" onclick="playerMove(0)"></div>
+            <div class="cell" onclick="playerMove(1)"></div>
+            <div class="cell" onclick="playerMove(2)"></div>
+            <div class="cell" onclick="manualMove(3)" style="display:none"></div><!-- Технические заглушки -->
+            <div class="cell" onclick="playerMove(3)"></div>
+            <div class="cell" onclick="playerMove(4)"></div>
+            <div class="cell" onclick="playerMove(5)"></div>
+            <div class="cell" onclick="playerMove(6)"></div>
+            <div class="cell" onclick="playerMove(7)"></div>
+            <div class="cell" onclick="playerMove(8)"></div>
+        </div>
+        <button class="action-btn" onclick="resetGame()">Начать заново</button>
+    </div>
+</div>
+
+<script>
+    // Загрузка данных профиля из localStorage (созданных в index.html)
+    window.onload = function() {
+        const currentUser = localStorage.getItem('currentUser');
+        if (currentUser) {
+            document.getElementById('userName').innerText = currentUser;
+            const savedData = localStorage.getItem('user_' + currentUser);
+            if (savedData) {
+                const userData = JSON.parse(savedData);
+                if (userData.avatar) {
+                    document.getElementById('userAvatar').src = userData.avatar;
+                }
+            }
+        }
+    };
+
+    // --- ЛОГИКА ИГРЫ КРЕСТИКИ-НОЛИКИ ---
+    let board = Array(9).fill('');
+    let isGameActive = true;
+    const playerSign = 'X';
+    const botSign = 'O';
+
+    function playerMove(index) {
+        if (board[index] !== '' || !isGameActive) return;
+
+        // Ход игрока
+        board[index] = playerSign;
+        updateBoard();
+        
+        if (checkWin(playerSign)) {
+            document.getElementById('status').innerText = "🎉 Вы победили!";
+            isGameActive = false;
+            return;
+        }
+
+        if (!board.includes('')) {
+            document.getElementById('status').innerText = "🤝 Ничья!";
+            isGameActive = false;
+            return;
+        }
+
+        // Ход бота через небольшую паузу
+        isGameActive = false; 
+        document.getElementById('status').innerText = "🤖 Бот думает...";
+        setTimeout(botMove, 500);
+    }
+
+    function botMove() {
+        if (!board.includes('')) return;
+
+        // Умный ИИ: 1. Проверяет, может ли выиграть сам
+        let move = findBestMove(botSign);
+        // 2. Если нет, проверяет, нужно ли заблокировать игрока
+        if (move === null) move = findBestMove(playerSign);
+        // 3. Если блокировать не нужно, занимает центр или случайную клетку
+        if (move === null) {
+            if (board[4] === '') move = 4;
+            else {
+                let emptyCells = [];
+                board.forEach((cell, idx) => { if (cell === '') emptyCells.push(idx); });
+                move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            }
+        }
+
+        board[move] = botSign;
+        updateBoard();
+
+        if (checkWin(botSign)) {
+            document.getElementById('status').innerText = "🤖 Бот выиграл!";
+            isGameActive = false;
+            return;
+        }
+
+        if (!board.includes('')) {
+            document.getElementById('status').innerText = "🤝 Ничья!";
+            isGameActive = false;
+            return;
+        }
+
+        document.getElementById('status').innerText = "Ваш ход (X)";
+        isGameActive = true;
+    }
+
+    // Вспомогательная функция для ИИ (поиск победных или блокирующих линий)
+    function findBestMove(sign) {
+        const winLines = [, [3, 4, 5], [6, 7, 8], // горизонтали, [1, 4, 7], [2, 5, 8], // вертикали, [2, 4, 6]             // диагонали
+        ];
+        for (let line of winLines) {
+            let count = 0;
+            let emptyIdx = null;
+            for (let idx of line) {
+                if (board[idx] === sign) count++;
+                else if (board[idx] === '') emptyIdx = idx;
+            }
+            if (count === 2 && emptyIdx !== null) return emptyIdx;
+        }
+        return null;
+    }
+
+    function checkWin(sign) {
+        const winLines = [, [3, 4, 5], [6, 7, 8],
+, [1, 4, 7], [2, 5, 8],
+, [2, 4, 6]
+        ];
+        return winLines.some(line => line.every(idx => board[idx] === sign));
+    }
+
+    function updateBoard() {
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach((cell, idx) => {
+            cell.innerText = board[idx];
+            if (board[idx] === 'X') cell.style.color = '#00ff88';
+            if (board[idx] === 'O') cell.style.color = '#ff4444';
+        });
+    }
+
+    function resetGame() {
+        board = Array(9).fill('');
+        isGameActive = true;
+        document.getElementById('status').innerText = "Ваш ход (X)";
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(cell => { cell.innerText = ''; cell.style.color = '#fff'; });
+    }
+</script>
+</body>
+</html>
