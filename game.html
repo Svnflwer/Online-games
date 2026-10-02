@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Игровое Меню</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #141414;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .hub-container {
+            width: 100%;
+            max-width: 500px;
+            background: #1f1f1f;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            text-align: center;
+            box-sizing: border-box;
+        }
+        /* Панель профиля */
+        .profile-bar {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #2a2a2a;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: left;
+            position: relative;
+        }
+        .profile-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #00ff88;
+        }
+        .profile-name { font-weight: bold; font-size: 18px; color: #00ff88; }
+        .logout-btn {
+            position: absolute;
+            right: 12px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .logout-btn:hover { background: #dd3333; }
+
+        h2 { margin-top: 0; font-size: 22px; }
+
+        /* Меню выбора игр */
+        .menu-buttons { display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px; }
+        .game-btn {
+            background: #333;
+            color: #fff;
+            border: 2px solid #444;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+        }
+        .game-btn.active { background: #00ff88; color: #141414; border-color: #00ff88; }
+        .game-btn:hover { border-color: #00ff88; }
+
+        /* Игровое поле */
+        .game-zone {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 85px);
+            grid-gap: 10px;
+            justify-content: center;
+            margin: 20px auto;
+        }
+        .cell {
+            width: 85px;
+            height: 85px;
+            background: #1f1f1f;
+            border: 2px solid #444;
+            border-radius: 8px;
+            font-size: 36px;
+            font-weight: bold;
+            line-height: 85px;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+        .cell:hover { background: #333; }
+        #status { font-size: 18px; color: #00ff88; font-weight: bold; margin-bottom: 10px; }
+        
+        .action-btn {
+            background: #00ff88;
+            color: #141414;
+            border: none;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .action-btn:hover { background: #00dd77; }
+    </style>
+</head>
+<body>
+
+<div class="hub-container">
+    <!-- Верхняя панель сохраненного аккаунта -->
+    <div class="profile-bar">
+        <img id="userAvatar" class="profile-avatar" src="" alt="Аватар">
+        <div>
+            <div style="font-size: 11px; color: #aaa;">Игрок</div>
+            <div id="userName" class="profile-name">Загрузка...</div>
+        </div>
+        <button class="logout-btn" onclick="logout()">Выйти</button>
+    </div>
+
+    <h2>🎮 Игровое Меню</h2>
+    
+    <!-- Кнопки выбора игр -->
+    <div class="menu-buttons">
+        <button class="game-btn active">❌⭕ Крестики-Нолики (vs Бот)</button>
+        <button class="game-btn" style="opacity: 0.4; cursor: not-allowed;" disabled>🔒 Следующая игра (В разработке)</button>
+    </div>
+
+    <!-- ЗОНА ИГРЫ: КРЕСТИКИ-НОЛИКИ -->
+    <div class="game-zone">
+        <div id="status">Ваш ход (X)</div>
+        <div class="board">
+            <div class="cell" onclick="playerMove(0)"></div>
+            <div class="cell" onclick="playerMove(1)"></div>
+            <div class="cell" onclick="playerMove(2)"></div>
+            <div class="cell" onclick="playerMove(3)"></div>
+            <div class="cell" onclick="playerMove(4)"></div>
+            <div class="cell" onclick="playerMove(5)"></div>
+            <div class="cell" onclick="playerMove(6)"></div>
+            <div class="cell" onclick="playerMove(7)"></div>
+            <div class="cell" onclick="playerMove(8)"></div>
+        </div>
+        <button class="action-btn" onclick="resetGame()">Начать заново</button>
+    </div>
+</div>
+
+<script>
+    // Проверка авторизации при загрузке страницы
+    window.onload = function() {
+        const savedNickname = localStorage.getItem('savedNickname');
+        const savedAvatar = localStorage.getItem('savedAvatar');
+
+        // Если профиля нет в памяти, отправляем регистрироваться
+        if (!savedNickname) {
+            window.location.href = "index.html";
+            return;
+        }
+
+        // Выводим ник и аватарку на экран
+        document.getElementById('userName').innerText = savedNickname;
+        document.getElementById('userAvatar').src = savedAvatar;
+    };
+
+    // Функция сброса аккаунта (выход)
+    function logout() {
+        localStorage.removeItem('savedNickname');
+        localStorage.removeItem('savedAvatar');
+        window.location.href = "index.html";
+    }
+
+    // --- ЛОГИКА ИГРЫ КРЕСТИКИ-НОЛИКИ ---
+    let board = Array(9).fill('');
+    let isGameActive = true;
+    const playerSign = 'X';
+    const botSign = 'O';
+
+    function playerMove(index) {
+        if (board[index] !== '' || !isGameActive) return;
+
+        // Ход игрока
+        board[index] = playerSign;
+        updateBoard();
+        
+        if (checkWin(playerSign)) {
+            document.getElementById('status').innerText = "🎉 Вы победили!";
+            isGameActive = false;
+            return;
+        }
+
+        if (!board.includes('')) {
+            document.getElementById('status').innerText = "🤝 Ничья!";
+            isGameActive = false;
+            return;
+        }
+
+        // Передаем ход боту через 400мс
+        isGameActive = false; 
+        document.getElementById('status').innerText = "🤖 Бот думает...";
+        setTimeout(botMove, 400);
+    }
+
+    function botMove() {
+        if (!board.includes('')) return;
+
+        // ИИ Умный выбор:
+        // 1. Пытается выиграть сам за этот ход
+        let move = findUrgentMove(botSign);
+        // 2. Если нет победного хода, блокирует игрока
+        if (move === null) move = findUrgentMove(playerSign);
+        // 3. Занимает центр, если свободен
+        if (move === null && board[4] === '') move = 4;
+        // 4. Иначе просто выбирает случайное свободное место
+        if (move === null) {
+            let emptyCells = [];
+            board.forEach((cell, idx) => { if (cell === '') emptyCells.push(idx); });
+            move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        }
+
+        board[move] = botSign;
+        updateBoard();
+
+        if (checkWin(botSign)) {
+            document.getElementById('status').innerText = "🤖 Бот выиграл!";
+            isGameActive = false;
+            return;
+        }
+
+        if (!board.includes('')) {
+            document.getElementById('status').innerText = "🤝 Ничья!";
+            isGameActive = false;
+            return;
+        }
+
+        document.getElementById('status').innerText = "Ваш ход (X)";
+        isGameActive = true;
+    }
+
+    // Поиск критических линий для атаки или защиты
+    function findUrgentMove(sign) {
+        const winLines = [, [3, 4, 5], [6, 7, 8], // линии по горизонтали, [1, 4, 7], [2, 5, 8], // линии по вертикали, [2, 4, 6]             // диагонали
+        ];
+        for (let line of winLines) {
+            let count = 0;
+            let emptyIdx = null;
+            for (let idx of line) {
+                if (board[idx] === sign) count++;
+                else if (board[idx] === '') emptyIdx = idx;
+            }
+            if (count === 2 && emptyIdx !== null) return emptyIdx;
+        }
+        return null;
+    }
+
+    function checkWin(sign) {
+        const winLines = [, [3, 4, 5], [6, 7, 8],
+, [1, 4, 7], [2, 5, 8],
+, [2, 4, 6]
+        ];
+        return winLines.some(line => line.every(idx => board[idx] === sign));
+    }
+
+    function updateBoard() {
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach((cell, idx) => {
+            cell.innerText = board[idx];
+            if (board[idx] === 'X') cell.style.color = '#00ff88';
+            if (board[idx] === 'O') cell.style.color = '#ff4444';
+        });
+    }
+
+    function resetGame() {
+        board = Array(9).fill('');
+        isGameActive = true;
+        document.getElementById('status').innerText = "Ваш ход (X)";
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(cell => { cell.innerText = ''; cell.style.color = '#fff'; });
+    }
+</script>
+</body>
+</html>
