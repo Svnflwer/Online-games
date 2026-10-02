@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мультиплеер Игра</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #141414;
+            color: #fff;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: #1f1f1f;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        h2 { color: #00ff88; }
+        .btn {
+            background: #00ff88;
+            color: #141414;
+            border: none;
+            padding: 10px 20px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #00dd77; }
+        input {
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            background: #2a2a2a;
+            color: #fff;
+            width: 60%;
+            margin-bottom: 10px;
+        }
+        /* Игровое поле */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-gap: 5px;
+            justify-content: center;
+            margin: 20px auto;
+            display: none; /* Скрыто до начала игры */
+        }
+        .cell {
+            width: 100px;
+            height: 100px;
+            background: #2a2a2a;
+            border: 2px solid #333;
+            font-size: 36px;
+            font-weight: bold;
+            line-height: 100px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .cell:hover { background: #3a3a3a; }
+        #status { margin: 15px 0; font-size: 18px; color: #00ff88; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🎮 Дуо-Игра: Крестики-Нолики Онлайн</h2>
+    <div id="auth-info"></div>
+    
+    <!-- Блок подключения -->
+    <div id="setup-room">
+        <p>Ваш личный ID для друга: <b id="my-id" style="color: #00ff88;">Подключение...</b></p>
+        <hr style="border-color: #333;">
+        <p>Подключиться к другу:</p>
+        <input type="text" id="peer-id-input" placeholder="Вставьте ID друга">
+        <br>
+        <button class="btn" onclick="connectToFriend()">Играть вместе</button>
+    </div>
+
+    <!-- Игровой статус и поле -->
+    <div id="status">Ожидание подключения...</div>
+    <div class="board" id="gameBoard">
+        <div class="cell" onclick="makeMove(0)"></div>
+        <div class="cell" onclick="makeMove(1)"></div>
+        <div class="cell" onclick="makeMove(2)"></div>
+        <div class="cell" onclick="makeMove(3)"></div>
+        <div class="cell" onclick="makeMove(4)"></div>
+        <div class="cell" onclick="makeMove(5)"></div>
+        <div class="cell" onclick="makeMove(6)"></div>
+        <div class="cell" onclick="makeMove(7)"></div>
+        <div class="cell" onclick="makeMove(8)"></div>
+    </div>
+    
+    <button class="btn" style="background: #333; color: #fff;" onclick="window.location.href='friends.html'">🤝 Список друзей</button>
+</div>
+
+<!-- Подключаем бесплатную онлайн-библиотеку PeerJS -->
+<script src="https://unpkg.com"></script>
+
+<script>
+    const currentUser = localStorage.getItem('currentUser') || "Игрок";
+    document.getElementById('auth-info').innerText = "Вы вошли как: " + currentUser;
+
+    // Генерируем случайный ID или используем ник для сети
+    const peer = new Peer(currentUser + '-' + Math.floor(Math.random() * 1000));
+    let conn = null;
+    let mySign = '';    // 'X' или 'O'
+    let currentTurn = 'X'; 
+    let boardState = Array(9).fill('');
+
+    // Когда сеть готова, показываем ID игрока
+    peer.on('open', (id) => {
+        document.getElementById('my-id').innerText = id;
+        document.getElementById('status').innerText = "Поделитесь вашим ID с другом или введите его ID";
+    });
+
+    // Когда к нам КТО-ТО подключается (Мы — Хост, играем за X)
+    peer.on('connection', (connection) => {
+        conn = connection;
+        mySign = 'X';
+        setupConnection();
+        document.getElementById('status').innerText = "Игрок подключился! Ваш ход (X)";
+        startGame();
+    });
+
+    // Когда МЫ подключаемся к кому-то (Мы — Гость, играем за O)
+    function connectToFriend() {
+        const friendId = document.getElementById('peer-id-input').value.trim();
+        if (!friendId) return alert("Введите ID!");
+        
+        conn = peer.connect(friendId);
+        mySign = 'O';
+        setupConnection();
+        document.getElementById('status').innerText = "Подключение к другу...";
+    }
+
+    // Настройка отправки и получения данных по сети
+    function setupConnection() {
+        conn.on('open', () => {
+            document.getElementById('status').innerText = "Игра началась! Ход игрока X";
+            startGame();
+        });
+
+        // Слушаем ходы от другого игрока в реальном времени
+        conn.on('data', (data) => {
+            if (data.type === 'move') {
+                boardState[data.index] = data.sign;
+                updateBoard();
+                currentTurn = mySign; // Теперь наш ход
+                document.getElementById('status').innerText = "Ваш ход (" + mySign + ")";
+                checkWinner();
+            }
+        });
+    }
+
+    function startGame() {
+        document.getElementById('setup-room').style.display = 'none';
+        document.getElementById('gameBoard').style.display = 'grid';
+    }
+
+    // Логика клика по клетке
+    function makeMove(index) {
+        if (boardState[index] !== '' || currentTurn !== mySign) return;
+
+        boardState[index] = mySign;
+        updateBoard();
+        
+        // Отправляем ход другу по сети!
+        if (conn && conn.open) {
+            conn.send({ type: 'move', index: index, sign: mySign });
+        }
+
+        currentTurn = mySign === 'X' ? 'O' : 'X'; // Передаем ход
+        document.getElementById('status').innerText = "Ожидание хода противника...";
+        checkWinner();
+    }
+
+    function updateBoard() {
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach((cell, i) => {
+            cell.innerText = boardState[i];
+        });
+    }
+
+    function checkWinner() {
+        const winPatterns = [, [3,4,5], [6,7,8], // горизонтали, [1,4,7], [2,5,8], // вертикали, [2,4,6]           // диагонали
+        ];
+
+        for (let pattern of winPatterns) {
+            const [a, b, c] = pattern;
+            if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
+                document.getElementById('status').innerText = "Победитель: " + boardState[a] + "!";
+                currentTurn = ''; // Останавливаем игру
+                return;
+            }
+        }
+        if (!boardState.includes('')) {
+            document.getElementById('status').innerText = "Ничья!";
+        }
+    }
+</script>
+</body>
+</html>
