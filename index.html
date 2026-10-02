@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в игровую платформу</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #141414;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: #1f1f1f;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h2 { margin-bottom: 20px; color: #00ff88; }
+        .form-group { margin-bottom: 15px; text-align: left; }
+        label { display: block; margin-bottom: 5px; color: #bbb; }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 6px;
+            background: #2a2a2a;
+            color: #fff;
+            box-sizing: border-box;
+        }
+        input[type="file"] { display: none; }
+        .avatar-label {
+            display: inline-block;
+            padding: 10px 15px;
+            background: #333;
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 5px;
+            transition: background 0.3s;
+        }
+        .avatar-label:hover { background: #444; }
+        .avatar-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 10px auto;
+            display: none;
+            border: 2px solid #00ff88;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #00ff88;
+            border: none;
+            border-radius: 6px;
+            color: #141414;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 15px;
+        }
+        button:hover { background: #00dd77; }
+        .toggle-link {
+            margin-top: 15px;
+            color: #00ff88;
+            cursor: pointer;
+            display: inline-block;
+            text-decoration: underline;
+        }
+        .error-msg { color: #ff4444; margin-top: 10px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="authBox">
+    <h2 id="formTitle">Регистрация аккаунта</h2>
+    
+    <!-- Выбор аватарки (только для регистрации) -->
+    <div class="form-group" id="avatarGroup">
+        <label>Аватар профиля:</label>
+        <label for="avatarInput" class="avatar-label">Выбрать из галереи</label>
+        <input type="file" id="avatarInput" accept="image/*">
+        <br>
+        <img id="avatarPreview" class="avatar-preview" src="" alt="Превью">
+    </div>
+
+    <!-- Никнейм -->
+    <div class="form-group">
+        <label for="username">Имя пользователя (Ник):</label>
+        <input type="text" id="username" placeholder="Введите ник">
+    </div>
+
+    <!-- Пароль -->
+    <div class="form-group">
+        <label for="password">Пароль:</label>
+        <input type="password" id="password" placeholder="Введите пароль">
+    </div>
+
+    <button id="mainBtn" onclick="handleAuth()">Создать аккаунт</button>
+    <div class="error-msg" id="errorMsg"></div>
+
+    <span class="toggle-link" id="toggleMode" onclick="toggleMode()">Уже есть аккаунт? Войти</span>
+</div>
+
+<script>
+    let isSignUpMode = true; // По умолчанию режим регистрации
+    let avatarBase64 = "";   // Здесь будет храниться картинка в текстовом формате
+
+    // Логика выбора картинки из галереи и превращения её в строку (Base64)
+    document.getElementById('avatarInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                avatarBase64 = event.target.result;
+                const preview = document.getElementById('avatarPreview');
+                preview.src = avatarBase64;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Переключение между Входом и Регистрацией
+    function toggleMode() {
+        isSignUpMode = !isSignUpMode;
+        const formTitle = document.getElementById('formTitle');
+        const mainBtn = document.getElementById('mainBtn');
+        const toggleLink = document.getElementById('toggleMode');
+        const avatarGroup = document.getElementById('avatarGroup');
+        document.getElementById('errorMsg').innerText = "";
+
+        if (isSignUpMode) {
+            formTitle.innerText = "Регистрация аккаунта";
+            mainBtn.innerText = "Создать аккаунт";
+            toggleLink.innerText = "Уже есть аккаунт? Войти";
+            avatarGroup.style.display = "block";
+        } else {
+            formTitle.innerText = "Вход в аккаунт";
+            mainBtn.innerText = "Войти";
+            toggleLink.innerText = "Нет аккаунта? Зарегистрироваться";
+            avatarGroup.style.display = "none";
+        }
+    }
+
+    // Главная функция обработки кнопок
+    function handleAuth() {
+        const user = document.getElementById('username').value.trim();
+        const pass = document.getElementById('password').value.trim();
+        const errorMsg = document.getElementById('errorMsg');
+
+        if (!user || !pass) {
+            errorMsg.innerText = "Заполните все поля!";
+            return;
+        }
+
+        if (isSignUpMode) {
+            // ---- РЕГИСТРАЦИЯ ----
+            if (localStorage.getItem('user_' + user)) {
+                errorMsg.innerText = "Пользователь с таким ником уже существует!";
+                return;
+            }
+
+            // Создаем объект пользователя
+            const userData = {
+                username: user,
+                password: pass,
+                avatar: avatarBase64 || "https://placeholder.com" // дефолтная заглушка
+            };
+
+            // Сохраняем в localStorage браузера
+            localStorage.setItem('user_' + user, JSON.stringify(userData));
+            // Помечаем, кто сейчас залогинен
+            localStorage.setItem('currentUser', user);
+
+            alert("Аккаунт успешно создан!");
+            window.location.href = "game.html"; // Перенаправление на будущую страницу игры
+
+        } else {
+            // ---- ВХОД ----
+            const savedData = localStorage.getItem('user_' + user);
+
+            if (!savedData) {
+                errorMsg.innerText = "Пользователь не найден!";
+                return;
+            }
+
+            const parsedData = JSON.parse(savedData);
+
+            if (parsedData.password === pass) {
+                localStorage.setItem('currentUser', user);
+                alert("Успешный вход!");
+                window.location.href = "game.html"; // Перенаправление
+            } else {
+                errorMsg.innerText = "Неверный пароль!";
+            }
+        }
+    }
+</script>
+</body>
+</html>
